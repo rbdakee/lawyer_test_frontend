@@ -215,12 +215,12 @@ export default function ExamPage() {
     <div className="min-h-screen bg-gradient-to-br from-[#E6F7FF] via-[#F0F9FF] to-white py-8 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border-2 border-[#FFB700]/20">
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6 border-2 border-[#FFB700]/20">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold text-[#FFB700] mb-2">{t.title}</h1>
+            <div className="flex-1 w-full">
+              <h1 className="text-xl sm:text-2xl font-bold text-[#FFB700] mb-2">{t.title}</h1>
               <ProgressBar current={currentQuestionIndex + 1} total={questions.length} section="exam" />
-              <div className="mt-2 text-sm text-gray-600">
+              <div className="mt-2 text-xs sm:text-sm text-gray-600">
                 {t.answered}: {answeredCount} / {questions.length}
               </div>
             </div>
@@ -238,19 +238,19 @@ export default function ExamPage() {
         />
 
         {/* Navigation */}
-        <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-[#FFB700]/20">
-          <div className="flex justify-between gap-4">
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border-2 border-[#FFB700]/20">
+          <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-4">
             <button
               onClick={handlePreviousQuestion}
               disabled={currentQuestionIndex === 0}
-              className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold"
+              className="px-4 sm:px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold text-sm sm:text-base"
             >
               ← {t.previous}
             </button>
             
             <button
               onClick={() => router.push('/')}
-              className="px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold"
+              className="px-4 sm:px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold text-sm sm:text-base"
             >
               {t.homeButton}
             </button>
@@ -258,14 +258,14 @@ export default function ExamPage() {
             {currentQuestionIndex === questions.length - 1 ? (
               <button
                 onClick={handleFinishTest}
-                className="px-6 py-3 bg-gradient-to-r from-[#FFB700] to-[#FFD700] text-white rounded-lg hover:from-[#FFA500] hover:to-[#FFB700] transition-all duration-200 font-semibold shadow-md"
+                className="px-4 sm:px-6 py-3 bg-gradient-to-r from-[#FFB700] to-[#FFD700] text-white rounded-lg hover:from-[#FFA500] hover:to-[#FFB700] transition-all duration-200 font-semibold shadow-md text-sm sm:text-base whitespace-nowrap"
               >
                 {t.finishButton}
               </button>
             ) : (
               <button
                 onClick={handleNextQuestion}
-                className="px-6 py-3 bg-gradient-to-r from-[#00AFCA] to-[#0099CC] text-white rounded-lg hover:from-[#0099CC] hover:to-[#0088BB] transition-all duration-200 font-semibold shadow-md"
+                className="px-4 sm:px-6 py-3 bg-gradient-to-r from-[#00AFCA] to-[#0099CC] text-white rounded-lg hover:from-[#0099CC] hover:to-[#0088BB] transition-all duration-200 font-semibold shadow-md text-sm sm:text-base"
               >
                 {t.next} →
               </button>

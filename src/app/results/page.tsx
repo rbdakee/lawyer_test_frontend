@@ -55,12 +55,12 @@ export default function ResultsPage() {
     <div className="min-h-screen bg-gradient-to-br from-[#E6F7FF] via-[#F0F9FF] to-white py-8 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border-2 border-[#00AFCA]/20">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-3xl font-bold text-[#00AFCA]">{completed?.viewResults || 'Результаты'}</h1>
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6 border-2 border-[#00AFCA]/20">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#00AFCA] break-words">{completed?.viewResults || 'Результаты'}</h1>
             <button
               onClick={() => router.push('/')}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all duration-200 font-semibold"
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all duration-200 font-semibold whitespace-nowrap w-full sm:w-auto"
             >
               {completed?.home || 'На главную'}
             </button>
@@ -83,21 +83,21 @@ export default function ResultsPage() {
             const hasAnswer = userAnswer !== undefined;
 
             return (
-              <div key={question.id} className="bg-white rounded-xl shadow-lg p-6 border-2 border-gray-100">
+              <div key={question.id} className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border-2 border-gray-100">
                 {/* Question Number and Status */}
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
                   <h2 className="text-lg font-semibold text-gray-700">
                     {t.questionProgress} {index + 1} {translations.common.of} {total}
                   </h2>
                   <span
-                    className={`px-3 py-1 rounded-full font-semibold ${
+                    className={`px-3 py-1 rounded-full font-semibold text-sm whitespace-nowrap ${
                       isCorrect
                         ? 'bg-green-100 text-green-700'
                         : 'bg-red-100 text-red-700'
                     }`}
                   >
                     {!hasAnswer 
-                      ? '❌ ' + (translations.exam?.answered || 'Не отвечено')
+                      ? '❌ ' + (t.answered || translations.exam?.answered || 'Не отвечено')
                       : isCorrect 
                         ? '✓ ' + (t.correctAnswer || 'Правильно') 
                         : '✗ ' + (t.wrongAnswer || 'Неправильно')}
@@ -105,7 +105,7 @@ export default function ResultsPage() {
                 </div>
 
                 {/* Question Text */}
-                <h3 className="text-xl font-semibold mb-4 text-gray-800 leading-relaxed">
+                <h3 className="text-lg sm:text-xl font-semibold mb-4 text-gray-800 leading-relaxed break-words">
                   {question.question}
                 </h3>
 
@@ -124,14 +124,16 @@ export default function ResultsPage() {
 
                     return (
                       <div key={optIndex} className={optionClass}>
-                        <span className="font-bold mr-3 text-lg">{String.fromCharCode(65 + optIndex)}.</span>
-                        <span>{option}</span>
-                        {optIndex === question.correct && (
-                          <span className="ml-2 text-green-700 font-bold">✓ {t.correctAnswer || 'Правильный ответ'}</span>
-                        )}
-                        {hasAnswer && optIndex === userAnswer && optIndex !== question.correct && (
-                          <span className="ml-2 text-red-700 font-bold">✗ {t.wrongAnswer || 'Ваш ответ'}</span>
-                        )}
+                        <div className="flex flex-wrap items-start gap-2">
+                          <span className="font-bold text-lg flex-shrink-0">{String.fromCharCode(65 + optIndex)}.</span>
+                          <span className="flex-1 break-words">{option}</span>
+                          {optIndex === question.correct && (
+                            <span className="ml-auto text-green-700 font-bold whitespace-nowrap">✓ {t.correctAnswer || 'Правильный ответ'}</span>
+                          )}
+                          {hasAnswer && optIndex === userAnswer && optIndex !== question.correct && (
+                            <span className="ml-auto text-red-700 font-bold whitespace-nowrap">✗ {t.wrongAnswer || 'Ваш ответ'}</span>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -140,7 +142,7 @@ export default function ResultsPage() {
                 {/* Explanation */}
                 <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
                   <p className="font-semibold mb-2 text-blue-700">
-                    {translations.demo?.correctAnswer || 'Объяснение'}:
+                    {t.correctAnswer || 'Объяснение'}:
                   </p>
                   <p className="text-gray-700 leading-relaxed">{question.explanation}</p>
                 </div>

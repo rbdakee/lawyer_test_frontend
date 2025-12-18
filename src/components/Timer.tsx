@@ -32,8 +32,8 @@ export default function Timer({ isRunning, onStop }: TimerProps) {
   };
 
   return (
-    <div className="timer bg-gradient-to-r from-[#00AFCA] to-[#0099CC] text-white px-6 py-3 rounded-lg shadow-lg">
-      <div className="text-3xl font-bold text-center">
+    <div className="timer bg-gradient-to-r from-[#00AFCA] to-[#0099CC] text-white px-4 sm:px-6 py-3 rounded-lg shadow-lg w-full md:w-auto">
+      <div className="text-xl sm:text-2xl md:text-3xl font-bold text-center whitespace-nowrap">
         ⏱ {formatTime(seconds)}
       </div>
     </div>

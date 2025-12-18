@@ -23,8 +23,8 @@ export default function QuestionCard({
   const t = translations?.demo || {};
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-6 mb-4 border-2 border-gray-100">
-      <h2 className="text-xl font-semibold mb-6 text-gray-800 leading-relaxed">
+    <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-4 border-2 border-gray-100">
+      <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6 text-gray-800 leading-relaxed break-words">
         {question.question}
       </h2>
 
@@ -55,8 +55,10 @@ export default function QuestionCard({
               disabled={showExplanation && isDemo}
               className={buttonClass}
             >
-              <span className="font-bold mr-3 text-lg">{String.fromCharCode(65 + index)}.</span> 
-              <span>{option}</span>
+              <div className="flex items-start gap-2">
+                <span className="font-bold text-lg flex-shrink-0">{String.fromCharCode(65 + index)}.</span>
+                <span className="flex-1 text-left break-words">{option}</span>
+              </div>
             </button>
           );
         })}
