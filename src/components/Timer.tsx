@@ -3,22 +3,12 @@
 import { useEffect, useState } from 'react';
 
 interface TimerProps {
-  isRunning: boolean;
+  seconds: number;
+  isRunning?: boolean;
   onStop?: () => void;
 }
 
-export default function Timer({ isRunning, onStop }: TimerProps) {
-  const [seconds, setSeconds] = useState(0);
-
-  useEffect(() => {
-    if (!isRunning) return;
-
-    const interval = setInterval(() => {
-      setSeconds((prev) => prev + 1);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isRunning]);
+export default function Timer({ seconds, isRunning, onStop }: TimerProps) {
 
   const formatTime = (totalSeconds: number): string => {
     const hours = Math.floor(totalSeconds / 3600);

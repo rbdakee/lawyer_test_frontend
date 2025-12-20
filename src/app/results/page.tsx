@@ -7,8 +7,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ResultsData {
   questions: Question[];
-  selectedAnswers: Record<number, number>;
-  mode: 'demo' | 'exam';
+  selectedAnswers: Record<string, number>;
+  mode: 'demo' | 'exam' | 'trainer';
   language: string;
 }
 
@@ -36,7 +36,7 @@ export default function ResultsPage() {
     );
   }
 
-  const t = resultsData.mode === 'demo' ? translations.demo : translations.exam;
+  const t = resultsData.mode === 'demo' || resultsData.mode === 'trainer' ? translations.demo : translations.exam;
   const completed = t.completed;
 
   const calculateScore = () => {

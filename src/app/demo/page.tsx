@@ -4,35 +4,98 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Question } from '@/types';
 import QuestionCard from '@/components/QuestionCard';
-import Timer from '@/components/Timer';
 import ProgressBar from '@/components/ProgressBar';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { API_URL } from '@/config/api';
+import { apiRequest } from '@/config/api';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
+import Link from 'next/link';
+
+const DEMO_QUESTIONS_COUNT = 20;
 
 export default function DemoPage() {
   const router = useRouter();
   const { translations, loading: langLoading, language } = useLanguage();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
-  const [showExplanation, setShowExplanation] = useState(false);
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [testStarted, setTestStarted] = useState(false);
   const [testCompleted, setTestCompleted] = useState(false);
-  const [timerRunning, setTimerRunning] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState(0);
 
   useEffect(() => {
-    if (language) {
-      fetchQuestions();
+    if (language && questions.length === 0) {
+      // Проверяем, есть ли сохраненное состояние перед загрузкой вопросов
+      if (typeof window !== 'undefined') {
+        const savedTestState = sessionStorage.getItem('demo_test_state');
+        if (!savedTestState || !JSON.parse(savedTestState).questions) {
+          fetchQuestions();
+        }
+      } else {
+        fetchQuestions();
+      }
     }
-  }, [language]);
+  }, [language, questions.length]);
+
+  // Восстанавливаем состояние теста из sessionStorage (до загрузки вопросов)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && questions.length === 0) {
+      const savedTestState = sessionStorage.getItem('demo_test_state');
+      if (savedTestState) {
+        try {
+          const state = JSON.parse(savedTestState);
+          if (state.testStarted && !state.testCompleted && state.questions) {
+            // Восстанавливаем вопросы из сохраненного состояния
+            setQuestions(state.questions);
+            setTestStarted(true);
+            setCurrentQuestionIndex(state.currentQuestionIndex || 0);
+            setSelectedAnswers(state.selectedAnswers || {});
+            setElapsedTime(state.elapsedTime || 0);
+            setIsLoading(false);
+          }
+        } catch (e) {
+          console.error('Error restoring test state:', e);
+          sessionStorage.removeItem('demo_test_state');
+        }
+      }
+    }
+  }, []);
+
+  // Сохраняем состояние теста в sessionStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && testStarted && !testCompleted && questions.length > 0) {
+      const testState = {
+        testStarted,
+        currentQuestionIndex,
+        selectedAnswers,
+        elapsedTime,
+        questionIds: questions.map(q => q.id), // Сохраняем ID для проверки
+        questions, // Сохраняем полные вопросы для восстановления
+      };
+      sessionStorage.setItem('demo_test_state', JSON.stringify(testState));
+    } else if (testCompleted && typeof window !== 'undefined') {
+      // Очищаем сохраненное состояние после завершения теста
+      sessionStorage.removeItem('demo_test_state');
+    }
+  }, [testStarted, testCompleted, currentQuestionIndex, selectedAnswers, elapsedTime, questions]);
+
+  useEffect(() => {
+    if (testStarted && !testCompleted) {
+      const timer = setInterval(() => {
+        setElapsedTime((prev) => prev + 1);
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [testStarted, testCompleted]);
 
   const fetchQuestions = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${API_URL}/api/questions/demo?lang=${language}`);
-      const data = await response.json();
-      setQuestions(data.questions);
+      const questions = await apiRequest<Question[]>('/api/questions/demo', {
+        method: 'GET',
+      });
+      setQuestions(questions);
       setIsLoading(false);
     } catch (error) {
       console.error('Error fetching questions:', error);
@@ -46,34 +109,53 @@ export default function DemoPage() {
       ...prev,
       [currentQuestionId]: answerIndex,
     }));
-    setShowExplanation(true);
   };
 
   const handleNextQuestion = () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex((prev) => prev + 1);
-      const nextQuestionId = questions[currentQuestionIndex + 1].id;
-      const hasAnswer = selectedAnswers[nextQuestionId] !== undefined;
-      setShowExplanation(hasAnswer);
     } else {
-      // Достигли последнего вопроса, завершаем тест
+      // Сохраняем результаты для просмотра
+      // Вопросы уже приходят с API в преобразованном формате (question, options, explanation - строки)
+      if (typeof window !== 'undefined') {
+        const testResults = {
+          questions: questions.map(q => ({
+            id: q.id,
+            question: q.question,
+            options: q.options,
+            correct: q.correct,
+            explanation: q.explanation,
+            section: q.section,
+            section_name: q.section_name,
+          })),
+          selectedAnswers: selectedAnswers,
+          mode: 'demo' as const,
+          language: language,
+        };
+        sessionStorage.setItem('testResults', JSON.stringify(testResults));
+      }
       setTestCompleted(true);
-      setTimerRunning(false);
     }
   };
 
   const handlePreviousQuestion = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex((prev) => prev - 1);
-      const prevQuestionId = questions[currentQuestionIndex - 1].id;
-      const hasAnswer = selectedAnswers[prevQuestionId] !== undefined;
-      setShowExplanation(hasAnswer);
     }
   };
 
   const handleStartTest = () => {
     setTestStarted(true);
-    setTimerRunning(true);
+    // Очищаем старое сохраненное состояние при старте нового теста
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('demo_test_state');
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   const calculateScore = () => {
@@ -87,32 +169,18 @@ export default function DemoPage() {
     return { correct, total: questions.length, percentage };
   };
 
-  const handleViewResults = () => {
-    const resultsData = {
-      questions,
-      selectedAnswers,
-      mode: 'demo',
-      language
-    };
-    // Сохраняем результаты в sessionStorage для просмотра
-    sessionStorage.setItem('testResults', JSON.stringify(resultsData));
-    router.push('/results');
-  };
-
   if (langLoading || !translations) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#E6F7FF] to-white">
-        <div className="text-2xl text-[#00AFCA] font-semibold">Загрузка...</div>
+        <div className="text-2xl text-[#00AFCA] font-semibold">{translations?.common?.loading || translations?.demo?.loading || 'Жүктелуде...'}</div>
       </div>
     );
   }
 
-  const t = translations.demo;
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#E6F7FF] to-white">
-        <div className="text-2xl text-[#00AFCA] font-semibold">{t.loading}</div>
+        <div className="text-2xl text-[#00AFCA] font-semibold">{translations?.demo?.loading || translations?.common?.loading || 'Жүктелуде...'}</div>
       </div>
     );
   }
@@ -120,90 +188,95 @@ export default function DemoPage() {
   if (!testStarted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#E6F7FF] via-[#F0F9FF] to-white flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-10 max-w-lg w-full border-2 border-[#00AFCA]/20">
-          <h1 className="text-3xl font-bold mb-4 text-center bg-gradient-to-r from-[#00AFCA] to-[#0099CC] bg-clip-text text-transparent">
-            🎓 {t.title}
-          </h1>
-          <p className="text-gray-600 mb-6 text-center text-lg leading-relaxed">
-            {t.description}
-            <br />
-            <span className="font-semibold text-[#00AFCA]">{t.totalQuestions}: {questions.length}</span>
-          </p>
+        <div className="bg-white rounded-2xl shadow-2xl p-10 max-w-lg w-full border-2 border-[#00AFCA]/20 relative">
+          <div className="absolute top-4 right-4">
+            <LanguageSwitcher />
+          </div>
+          
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-[#00AFCA] to-[#0099CC] bg-clip-text text-transparent">
+              {translations?.demo?.title || 'Демо режим'}
+            </h1>
+            <div className="space-y-3 text-left">
+              <p className="text-gray-700"><strong>{translations?.demo?.totalQuestions || 'Барлық сұрақтар'}:</strong> {DEMO_QUESTIONS_COUNT}</p>
+              <p className="text-gray-700"><strong>{translations?.exam?.timeLabel || translations?.common?.time || 'Уақыт'}:</strong> {translations?.demo?.unlimited || translations?.exam?.unlimited || 'Шектеусіз'}</p>
+            </div>
+            <p className="text-blue-600 mt-4 text-sm">
+              {translations?.demo?.description || 'Демо режимде сіз бірден жауабыңыздың дұрыстығын және түсіндірмені көресіз.'}
+            </p>
+          </div>
+
           <button
             onClick={handleStartTest}
-            className="w-full bg-gradient-to-r from-[#00AFCA] to-[#0099CC] text-white py-4 px-6 rounded-xl hover:from-[#0099CC] hover:to-[#0088BB] transition-all duration-300 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+            className="w-full bg-gradient-to-r from-[#00AFCA] to-[#0099CC] text-white py-4 rounded-xl font-semibold text-lg hover:from-[#0099CC] hover:to-[#0088BB] transition-all duration-300 shadow-lg hover:shadow-xl"
           >
-            {t.startButton}
+{translations?.demo?.startButton || 'Бастау'}
           </button>
-          <button
-            onClick={() => router.push('/')}
-            className="w-full mt-4 bg-gray-200 text-gray-700 py-3 px-6 rounded-xl hover:bg-gray-300 transition-all duration-300 font-semibold"
-          >
-            {t.backButton}
-          </button>
+
+          <div className="mt-6 text-center">
+            <Link href="/" className="text-[#00AFCA] hover:underline">
+              ← {translations?.demo?.backButton || translations?.home?.backButton || 'Басты бетке'}
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
   if (testCompleted) {
-    const { correct, total, percentage } = calculateScore();
-    const completed = t.completed;
-
+    const score = calculateScore();
+    const t = translations.demo || {};
+    const completed = t.completed || {};
+    
+    const handleRestart = () => {
+      setTestCompleted(false);
+      setTestStarted(false);
+      setCurrentQuestionIndex(0);
+      setSelectedAnswers({});
+      setElapsedTime(0);
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('demo_test_state');
+        sessionStorage.removeItem('testResults');
+      }
+    };
+    
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#E6F7FF] via-[#F0F9FF] to-white flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-10 max-w-2xl w-full border-2 border-[#00AFCA]/20">
-          <div className="text-center">
-            <div className="text-6xl mb-4">🎉</div>
-            <h1 className="text-3xl font-bold mb-6 text-[#00AFCA]">{completed.title}</h1>
-            
-            <div className="bg-gradient-to-r from-[#00AFCA] to-[#0099CC] text-white rounded-xl p-6 mb-6">
-              <div className="text-5xl font-bold mb-2">{percentage}%</div>
-              <div className="text-xl">
-                {correct} / {total} {completed.correctAnswers.toLowerCase()}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="text-sm text-gray-600 mb-1">{completed.correctAnswers}</div>
-                <div className="text-2xl font-bold text-green-600">{correct}</div>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="text-sm text-gray-600 mb-1">{completed.wrongAnswers}</div>
-                <div className="text-2xl font-bold text-red-600">{total - correct}</div>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3 justify-center">
-              <button
-                onClick={handleViewResults}
-                className="px-6 py-3 bg-gradient-to-r from-[#00AFCA] to-[#0099CC] text-white rounded-xl hover:from-[#0099CC] hover:to-[#0088BB] transition-all duration-300 font-semibold shadow-md"
-              >
-                {completed.viewResults}
-              </button>
-              <div className="flex gap-3 justify-center">
-                <button
-                  onClick={() => {
-                    setTestCompleted(false);
-                    setTestStarted(false);
-                    setSelectedAnswers({});
-                    setCurrentQuestionIndex(0);
-                    setShowExplanation(false);
-                    fetchQuestions();
-                  }}
-                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-all duration-300 font-semibold"
-                >
-                  {completed.restart}
-                </button>
-                <button
-                  onClick={() => router.push('/')}
-                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-all duration-300 font-semibold"
-                >
-                  {completed.home}
-                </button>
-              </div>
-            </div>
+        <div className="bg-white rounded-2xl shadow-2xl p-10 max-w-lg w-full border-2 border-[#00AFCA]/20 text-center">
+          <h2 className="text-2xl font-bold mb-4">{completed.title || 'Демо режим завершен!'}</h2>
+          <div className="space-y-2 mb-6">
+            <p className="text-lg">
+              {completed.correctAnswers || 'Правильных ответов'}: <span className="font-bold text-green-600">{score.correct}</span>
+            </p>
+            <p className="text-lg">
+              {completed.wrongAnswers || 'Неправильных ответов'}: <span className="font-bold text-red-600">{score.total - score.correct}</span>
+            </p>
+            <p className="text-xl font-bold text-[#00AFCA]">
+              {translations?.common?.result || translations?.examDetails?.result || 'Нәтиже'}: {score.percentage}%
+            </p>
+            <p className="text-sm text-gray-500">
+              {translations?.common?.time || translations?.exam?.timeLabel || 'Уақыт'}: {formatTime(elapsedTime)}
+            </p>
+          </div>
+          <div className="space-y-3">
+            <Link
+              href="/results"
+              className="block w-full bg-gradient-to-r from-[#00AFCA] to-[#0099CC] text-white py-3 px-6 rounded-lg font-semibold hover:from-[#0099CC] hover:to-[#0088BB] transition-all"
+            >
+              {completed.viewResults || 'Посмотреть результаты'}
+            </Link>
+            <button
+              onClick={handleRestart}
+              className="block w-full bg-gradient-to-r from-[#4CAF50] to-[#45a049] text-white py-3 px-6 rounded-lg font-semibold hover:from-[#45a049] hover:to-[#3d8b40] transition-all"
+            >
+              {completed.restart || 'Попробовать еще раз'}
+            </button>
+            <Link
+              href="/"
+              className="block w-full bg-gray-200 text-gray-700 py-3 px-6 rounded-lg font-semibold hover:bg-gray-300 transition-all"
+            >
+              {completed.home || 'На главную'}
+            </Link>
           </div>
         </div>
       </div>
@@ -211,55 +284,56 @@ export default function DemoPage() {
   }
 
   const currentQuestion = questions[currentQuestionIndex];
-  const currentAnswer = selectedAnswers[currentQuestion.id];
-  const isLastQuestion = currentQuestionIndex === questions.length - 1;
+  const hasAnswer = selectedAnswers[currentQuestion.id] !== undefined;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#E6F7FF] via-[#F0F9FF] to-white py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#E6F7FF] via-[#F0F9FF] to-white p-4">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6 border-2 border-[#00AFCA]/20">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex-1 w-full">
-              <h1 className="text-xl sm:text-2xl font-bold text-[#00AFCA] mb-2">{t.title}</h1>
-              <ProgressBar current={currentQuestionIndex + 1} total={questions.length} section="demo" />
+        <div className="bg-white rounded-2xl shadow-2xl p-6 border-2 border-[#00AFCA]/20">
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-4">
+              <LanguageSwitcher />
+              <div>
+                <p className="text-lg font-semibold">{translations?.exam?.timeLabel || translations?.common?.time || 'Уақыт'}: {formatTime(elapsedTime)}</p>
+                <p className="text-sm text-gray-500">
+                  {translations?.demo?.questionProgress || 'Сұрақ'} {currentQuestionIndex + 1} {translations?.common?.of || '/'} {questions.length}
+                </p>
+              </div>
             </div>
-            <Timer isRunning={timerRunning} />
           </div>
-        </div>
 
-        {/* Question Card */}
-        <QuestionCard
-          question={currentQuestion}
-          selectedAnswer={currentAnswer ?? null}
-          onAnswerSelect={handleAnswerSelect}
-          showExplanation={showExplanation}
-          isDemo={true}
-        />
+          <ProgressBar current={currentQuestionIndex + 1} total={questions.length} section="demo" />
 
-        {/* Navigation */}
-        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border-2 border-[#00AFCA]/20">
-          <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-4">
+          <div className="mt-6">
+            {/* Показываем законодательство */}
+            <div className="mb-4">
+              <p className="text-xs text-gray-500">
+                {language === 'kz' ? currentQuestion.section_name.kz : currentQuestion.section_name.ru}
+              </p>
+            </div>
+            
+            <QuestionCard
+              question={currentQuestion}
+              selectedAnswer={selectedAnswers[currentQuestion.id]}
+              onAnswerSelect={handleAnswerSelect}
+              showExplanation={hasAnswer}
+              isDemo={true}
+            />
+          </div>
+
+          <div className="flex justify-between mt-6">
             <button
               onClick={handlePreviousQuestion}
               disabled={currentQuestionIndex === 0}
-              className="px-4 sm:px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold text-sm sm:text-base"
+              className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              ← {t.previous}
+              {translations?.demo?.previous || 'Алдыңғы'}
             </button>
-            
-            <button
-              onClick={() => router.push('/')}
-              className="px-4 sm:px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all duration-200 font-semibold text-sm sm:text-base"
-            >
-              {t.homeButton}
-            </button>
-
             <button
               onClick={handleNextQuestion}
-              className="px-4 sm:px-6 py-3 bg-gradient-to-r from-[#00AFCA] to-[#0099CC] text-white rounded-lg hover:from-[#0099CC] hover:to-[#0088BB] transition-all duration-200 font-semibold shadow-md text-sm sm:text-base"
+              className="bg-[#00AFCA] text-white px-6 py-2 rounded-lg hover:bg-[#0099CC] transition"
             >
-              {isLastQuestion ? t.completed?.viewResults || 'Завершить' : `${t.next} →`}
+              {currentQuestionIndex === questions.length - 1 ? (translations?.demo?.finishButton || translations?.demo?.completed?.restart || 'Аяқтау') : (translations?.demo?.next || 'Келесі')}
             </button>
           </div>
         </div>

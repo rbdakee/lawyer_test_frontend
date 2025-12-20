@@ -5,10 +5,10 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 interface QuestionCardProps {
   question: Question;
-  selectedAnswer: number | null;
+  selectedAnswer?: number | null;
   onAnswerSelect: (answerIndex: number) => void;
-  showExplanation: boolean;
-  isDemo: boolean;
+  showExplanation?: boolean;
+  isDemo?: boolean;
 }
 
 export default function QuestionCard({
@@ -64,7 +64,7 @@ export default function QuestionCard({
         })}
       </div>
 
-      {showExplanation && isDemo && (
+      {showExplanation && (
         <div className={`mt-6 p-5 rounded-lg border-l-4 ${
           isCorrect 
             ? 'bg-green-50 border-green-500' 
