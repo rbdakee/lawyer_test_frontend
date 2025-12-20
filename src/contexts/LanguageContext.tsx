@@ -1,7 +1,6 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { API_URL } from '@/config/api';
 
 type Language = 'kz' | 'ru';
 
@@ -41,7 +40,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const fetchTranslations = async (lang: Language) => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/translations/${lang}`);
+      // Используем proxy route для консистентности (хотя переводы не требуют токена)
+      const response = await fetch(`/api/proxy/translations/${lang}`);
       const data = await response.json();
       setTranslations(data.translations);
     } catch (error) {
