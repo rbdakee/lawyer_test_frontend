@@ -3,7 +3,7 @@
 const API_PROXY_URL = '/api/proxy';
 
 // Функция для получения заголовков (без SECRET_LOCAL_TOKEN, он добавляется на сервере)
-export function getAuthHeaders(token?: string): HeadersInit {
+export function getAuthHeaders(token?: string | null): HeadersInit {
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
   };
@@ -20,7 +20,7 @@ export function getAuthHeaders(token?: string): HeadersInit {
 export async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {},
-  token?: string
+  token?: string | null
 ): Promise<T> {
   // Убираем /api из начала endpoint, так как proxy route уже добавляет его
   const cleanEndpoint = endpoint.startsWith('/api/') 

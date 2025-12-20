@@ -58,7 +58,7 @@ export default function ExamDetailsPage() {
       setLoading(true);
       const data = await apiRequest<ExamDetails>(`/api/exams/${examId}?lang=${language}`, {
         method: 'GET',
-      }, token);
+      }, token || undefined);
       setExamDetails(data);
     } catch (error) {
       console.error('Error fetching exam details:', error);

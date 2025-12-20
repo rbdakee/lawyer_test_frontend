@@ -3,6 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const SECRET_LOCAL_TOKEN = process.env.SECRET_LOCAL_TOKEN || '';
 
+// Проверка переменных окружения в runtime (только для предупреждения)
+if (process.env.NODE_ENV === 'production' && !SECRET_LOCAL_TOKEN) {
+  console.warn('WARNING: SECRET_LOCAL_TOKEN is not set in production environment');
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { path: string[] } }
