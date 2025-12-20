@@ -1,11 +1,11 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-export const SECRET_LOCAL_TOKEN = process.env.NEXT_PUBLIC_SECRET_LOCAL_TOKEN || '';
+// Используем API route для проксирования запросов к бэкенду
+// Это позволяет скрыть SECRET_LOCAL_TOKEN от клиента
+const API_PROXY_URL = '/api/proxy';
 
-// Функция для получения заголовков с токеном
+// Функция для получения заголовков (без SECRET_LOCAL_TOKEN, он добавляется на сервере)
 export function getAuthHeaders(token?: string): HeadersInit {
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
-    'X-API-Token': SECRET_LOCAL_TOKEN,
   };
   
   if (token) {
@@ -16,12 +16,20 @@ export function getAuthHeaders(token?: string): HeadersInit {
 }
 
 // Базовые функции для API запросов
+// Теперь запросы идут через Next.js API route, который добавляет SECRET_LOCAL_TOKEN на сервере
 export async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {},
   token?: string
 ): Promise<T> {
-  const url = `${API_URL}${endpoint}`;
+  // Убираем /api из начала endpoint, так как proxy route уже добавляет его
+  const cleanEndpoint = endpoint.startsWith('/api/') 
+    ? endpoint.slice(5) 
+    : endpoint.startsWith('/') 
+    ? endpoint.slice(1)
+    : endpoint;
+  
+  const url = `${API_PROXY_URL}/${cleanEndpoint}`;
   const headers = getAuthHeaders(token);
   
   const response = await fetch(url, {
